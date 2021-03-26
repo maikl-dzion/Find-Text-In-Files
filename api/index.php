@@ -20,24 +20,24 @@ date_default_timezone_set('Europe/Moscow');
 
 include_once 'FindServiceController.php';
 
-$manager = new FileManager();
-$finder  = new FindController();
+//$manager = new FileManager();
+//$finder  = new FindController();
 $helper  = new Helper();
 
 $routes = [
 
     '/get/dir/path/:path_type'  => 'FileManager@getPathToSystem',
     '/scan/dir/:scan_type'      => 'FileManager@selectScanDir',
-    '/scan/dir/child'           => 'FileManager@scanDirInit'  ,
     '/file/content/get'         => 'FileManager@loadFileContent',
 
     '/find/text'                => 'FindController@findInit',
     '/test/service/:param'      => 'FileManager@testAction',
 
-    //    '/get/dir/path/server'  => 'FileManager@getServerDirPath',
-    //    '/get/dir/path/system'  => 'FileManager@getSystemDirPath',
-    //    '/scan/dir/server'      => 'FileManager@scanServerDir',
-    //    '/scan/dir/system'      => 'FileManager@scanSystemDir',
+    //  '/scan/dir/child'       => 'FileManager@scanDirInit'  ,
+    //  '/get/dir/path/server'  => 'FileManager@getServerDirPath',
+    //  '/get/dir/path/system'  => 'FileManager@getSystemDirPath',
+    //  '/scan/dir/server'      => 'FileManager@scanServerDir',
+    //  '/scan/dir/system'      => 'FileManager@scanSystemDir',
 ];
 
 $router = new Router($routes, $helper);

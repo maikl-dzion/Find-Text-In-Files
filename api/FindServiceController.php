@@ -80,6 +80,8 @@ class Router
         $arguments  = $this->params;
         $action     = $this->action;
 
+        // lg([$class, $arguments, $action]);
+
         if(!class_exists($class))
             throw new \Exception("Not Found Controller-'{$class}' ");
 
@@ -105,15 +107,15 @@ class Router
         $info['perform'] = $this->helper->performCast();
 
         $result = (!empty($response['result'])) ? $response['result'] : array();
-        $error  = (!empty($response['error']))  ? array_merge($this->error, $response['error'])  : array();
+        $error  = (!empty($response['error']))  ? array_merge($this->errors, $response['error'])  : array();
 
         return array(
             'info'     => $info,
             'result'   => $result,
             'response' => $response,
             'error'    => $error,
-            'warn'     => array(),
-            'router'   => $this
+            'router'   => $this,
+            'warn'     => [],
         );
     }
 
@@ -412,6 +414,7 @@ class FileManager extends AbstractBaseController {
         switch($scanType){
             case 'system' : $result = $this->scanSystemDir(); break;
             case 'server' : $result = $this->scanServerDir(); break;
+            case 'child'  : $result = $this->scanDirInit();   break;
         }
         return $result;
     }
@@ -603,43 +606,11 @@ class Helper {
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+////////////////////////////////////////////////////
+/// ////////////////////////////////////////////////
+///
+///
+///
 
 class Dispatcher
 {
