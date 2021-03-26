@@ -1,0 +1,46 @@
+
+.main {
+	display: flex;
+}
+
+.left-panel, .content-panel {
+	margin:3px;
+	padding:5px;
+	border:1px gainsboro solid;
+}
+
+.left-panel {
+	width: 30%;
+}
+
+.content-panel {
+	width: 70%;
+}
+
+.tree-container {
+
+}
+
+.child-container {
+
+}
+
+.result-table-container {
+	width:100%;
+}
+
+.result-table-container td {
+	border:1px gainsboro solid;
+	padding:3px;
+}
+
+
+.container {
+	max-width: 90% !important;
+}
+
+.v-btn {
+	background: royalblue !important;
+	color:white !important;
+	margin:3px;
+}
