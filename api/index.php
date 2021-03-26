@@ -25,91 +25,32 @@ $finder  = new FindController();
 $helper  = new Helper();
 
 $routes = [
-    '/get/dir/path/server'  => 'FileManager@getServerDirPath',
-    '/get/dir/path/system'  => 'FileManager@getSystemDirPath',
 
-    '/scan/dir/server'  => 'FileManager@scanServerDir',
-    '/scan/dir/system'  => 'FileManager@scanSystemDir',
-    '/scan/dir/child'   => 'FileManager@scanDirInit',
-    '/file/content/get' => 'FileManager@loadFileContent',
+    '/get/dir/path/:path_type'  => 'FileManager@getPathToSystem',
+    '/scan/dir/:scan_type'      => 'FileManager@selectScanDir',
+    '/scan/dir/child'           => 'FileManager@scanDirInit'  ,
+    '/file/content/get'         => 'FileManager@loadFileContent',
 
-    '/find/text'        => 'FindController@findInit',
-    '/test/service/:param'  => 'FileManager@testAction',
+    '/find/text'                => 'FindController@findInit',
+    '/test/service/:param'      => 'FileManager@testAction',
 
-//    '/find/file'        => 'FindController@findInit',
-//    '/scan/dir'         => 'getOrder',
-//    '/edit/file'        => 'rttt',
-//    '/file/content/:arg' => 'rr',
-
+    //    '/get/dir/path/server'  => 'FileManager@getServerDirPath',
+    //    '/get/dir/path/system'  => 'FileManager@getSystemDirPath',
+    //    '/scan/dir/server'      => 'FileManager@scanServerDir',
+    //    '/scan/dir/system'      => 'FileManager@scanSystemDir',
 ];
 
 $router = new Router($routes, $helper);
 
-$response = [];
-
 try {
     $response = $router->run();
-} catch (\Exception $err) {
-    $errorMessage = $err->getMessage();
+} catch (\Exception $e) {
+    $errorMessage = $e->getMessage();
     $response['error'] = $errorMessage;
 }
 
+// lg($response);
+
 die(json_encode($response, true));
 
-
-//lg([ $response
-//    //$router
-//]);
-//
-//
-////$url   = '/find/text@example.com. Is it correct?';
-////$pattern = '|/find/text@([^\s\.]+\.[a-z]+)|';
-//
-//$url   = '/find/text';
-//$pattern = '|/find/text|';
-//$result = preg_match_all($pattern, $url, $matches);
-//
-//
-//$url = "/find/text/retet/rty/456";
-//$pattern = "|/find/text/[a-z]/*|";
-//if (preg_match($pattern, $url))
-//    echo "the url $url contains guru OK";
-//else
-//   echo "the url $url does not contain guru Not";
-//
-//lg([
-//    $result,
-//    $matches
-//]);
-//
-//die;
-//
-//$pattern = '|^/find/text/[0-9]/[0-9]$|';
-//$value = '/find/text/33/67';
-//$r = preg_match($pattern, $value, $matches);
-//
-//lg([$r, $matches]);
-//
-//preg_match('/find/text/:type/:id', 'foobarbaz', $matches, PREG_OFFSET_CAPTURE);
-//print_r($matches);
-//
-//
-//return array(
-//    '^/$' => 'controller=site&action=index',
-//    '^/admin(?:/|)$' => 'module=admin&controller=site&action=index',
-//    '^/admin/([a-z0-9]{1,15})(?:/|)$' => 'module=admin&controller=$1&action=index',
-//    '^/admin/([a-z0-9]{1,15})/([0-9]{1,15})(?:/|)$' => 'module=admin&controller=$1&action=view&id=$2',
-//
-//);
-//
-//$router->run();
-//
-//$uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
-//$segments = explode('/', trim($uri, '/'));
-//
-//
-//lg([
-//    trim($_SERVER['PATH_INFO'], '/'),
-//    $router
-//]);
 

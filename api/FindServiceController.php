@@ -1,9 +1,135 @@
 <?php
 
 
+class Router
+{
+    protected $request;
+    protected $server;
+    protected $helper;
+    protected $routes = [];
+    protected $errors = [];
+    protected $params = [];
+
+    protected $uri;
+    protected $routeUrl;
+    protected $controller;
+    protected $action;
+
+    public function __construct($routes, $helper)
+    {
+        $this->server  = $_SERVER;
+        $this->request = $_REQUEST;
+        $this->routes  = $routes;
+        $this->helper  = $helper;
+
+        $this->routeUrl = trim($this->has('PATH_INFO', $this->server));
+        $this->uri      = $this->has('REQUEST_URI', $this->server);
+
+        $this->init();
+    }
+
+
+    protected function init() {
+
+        $currentRoute = $this->getRoute();
+
+        if(empty($currentRoute['route'])) {
+            $this->errors[] = ' ERROR : Не найден маршрут ';
+            return false;
+        }
+
+        $this->params = $this->has('params', $currentRoute);
+        $metaData = explode('@', $currentRoute['route']);
+
+        if(!$this->controller = $this->has(0, $metaData))
+            throw new \Exception('ERROR : Не найден класс в url-маршруте');
+
+        if(!$this->action = $this->has(1, $metaData))
+            throw new \Exception('ERROR : Не найден метод в url-маршруте');
+
+        return true;
+    }
+
+    protected function getRoute($url = null) {
+        $url = (!$url) ? $this->routeUrl : $url;
+        foreach ($this->routes as $key => $route) {
+            $args = $this->getRouteArgs($key);
+            $regex = str_replace($args, '([^\/]+)', $key);
+            if (preg_match('@^' . $regex . '$@', $url, $matches)) {
+                array_shift($matches);
+                $params = (!empty($matches)) ? $matches : [];
+                return ['route'  => $route, 'params' => $params];
+            }
+        }
+        return false;
+    }
+
+    protected function getRouteArgs($uri) {
+         $segments = explode('/', trim($uri, '/'));
+         $result = [];
+         foreach ($segments as $key => $value) {
+             $pos = strpos($value, ':');
+             if ($pos !== false) $result[] = $value;
+         }
+         return $result;
+    }
+
+    public function run() {
+
+        $class      = $this->controller;
+        $arguments  = $this->params;
+        $action     = $this->action;
+
+        if(!class_exists($class))
+            throw new \Exception("Not Found Controller-'{$class}' ");
+
+        $request = $this;
+
+        $controller = new $class($arguments, $request);
+
+        if (!method_exists($controller, $action))
+            throw new \Exception("Not Found Action -'{$action}' ");
+
+        $this->helper->measurePerform('start');
+
+        if(!empty($arguments)) {
+            $urlParams = array();
+            foreach ($arguments as $key => $value)
+                $urlParams[] = $value;
+            $response = $controller->$action(...$urlParams);
+        } else {
+            $response = $controller->$action();
+        }
+
+        $this->helper->measurePerform('end');
+        $info['perform'] = $this->helper->performCast();
+
+        $result = (!empty($response['result'])) ? $response['result'] : array();
+        $error  = (!empty($response['error']))  ? array_merge($this->error, $response['error'])  : array();
+
+        return array(
+            'info'     => $info,
+            'result'   => $result,
+            'response' => $response,
+            'error'    => $error,
+            'warn'     => array(),
+            'router'   => $this
+        );
+    }
+
+
+    protected function has($fieldName, $data) {
+        return (!empty($data[$fieldName])) ? $data[$fieldName] : null;
+    }
+
+}
+
+
+
 abstract class AbstractBaseController {
 
     protected $data;
+    protected $inputData;
     protected $args;
     protected $helper;
 
@@ -19,7 +145,7 @@ abstract class AbstractBaseController {
     protected $systemDir;
     protected $request;
 
-    public function __construct($args = array(), $request = array()){
+    public function __construct($args = [], $request = []){
 
         $this->args    = $args;
         $this->request = $request;
@@ -37,13 +163,14 @@ abstract class AbstractBaseController {
     protected  function setRequestData() {
         $input   = (array)json_decode(file_get_contents('php://input'));
         $this->data = (!empty($input)) ? $input : $_REQUEST;
+        $this->inputData = $this->data;
     }
 
     protected function getData($fieldName) {
         return $this->has($fieldName, $this->data);
     }
 
-    protected function getArg($fieldName) {
+    protected function getUrlParam($fieldName) {
         return $this->has($fieldName, $this->args);
     }
 
@@ -83,138 +210,6 @@ abstract class AbstractBaseController {
         lg($this);
     }
 }
-
-class Router
-{
-    protected $routes = [];
-    protected $uri;
-    protected $pathInfo;
-    protected $method;
-
-    protected $request;
-    protected $server;
-    protected $data;
-    protected $urlParams = array();
-    protected $helper;
-
-    protected $response = array();
-    protected $result = array();
-    protected $error = array();
-
-    protected $controller;
-    protected $action;
-    protected $route;
-
-    public function __construct($routes, $helper)
-    {
-        $this->server  = $_SERVER;
-        $this->request = $_REQUEST;
-
-        $this->pathInfo = trim($this->server['PATH_INFO']);
-        $this->method = $this->server['REQUEST_METHOD'];
-        $this->routes = $routes;
-        $this->uri = $this->server['REQUEST_URI'];
-
-        $this->helper = $helper;
-
-        $this->init();
-    }
-
-    public function run() {
-
-        $class      = $this->controller;
-        $arguments  = $this->urlParams;
-        $action     = $this->action;
-
-        if(!class_exists($class))
-            throw new \Exception(
-                "Not Found Controller-'{$class}' "
-            );
-
-        $request = $this;
-
-        $controller = new $class($arguments, $request);
-
-        if (!method_exists($controller, $action))
-            throw new \Exception(
-                "Not Found Action -'{$action}' "
-            );
-
-        $this->helper->measurePerform('start');
-
-        if(!empty($arguments)) {
-            $urlParams = array();
-            foreach ($arguments as $key => $value)
-                $urlParams[] = $value;
-            $response = $controller->$action(...$urlParams);
-        } else {
-            $response = $controller->$action();
-        }
-
-        $this->helper->measurePerform('end');
-        $info['perform'] = $this->helper->performCast();
-
-        $result = (!empty($response['result'])) ? $response['result'] : array();
-        $error  = (!empty($response['error']))  ? array_merge($this->error, $response['error'])  : array();
-
-        return array(
-            'info'     => $info,
-            'result'   => $result,
-            'response' => $response,
-            'error'    => $error,
-            'warn'     => array(),
-            'router'   => $this
-        );
-    }
-
-    public function init() {
-
-        $findRoute = $this->getRoute();
-
-        if(!$findRoute) {
-            $this->error[] = 'ERROR:Не найден маршрут';
-            return false;
-        }
-
-        $metaData = explode('@', $this->route);
-
-        if(!$this->controller = $this->has(0, $metaData))
-            $this->error[] = 'ERROR:Не найден класс';
-
-        if(!$this->action = $this->has(1, $metaData))
-            $this->error[] = 'ERROR:Не найден метод класса';
-
-        return true;
-    }
-
-    protected function getRoute($uri = '') {
-
-        if(!$uri) $uri = $this->pathInfo;
-        $arg = ':param';
-
-        foreach ($this->routes as $key => $route) {
-            $regex = str_replace($arg, '([^\/]+)', $key);
-            if (preg_match('@^' . $regex . '$@', $uri, $matches)) {
-
-                array_shift($matches);
-
-                if(!empty($matches))
-                    $this->urlParams = $matches;
-
-                $this->route = $route;
-
-                return true;
-            }
-        }
-        return false;
-    }
-
-    protected function has($fieldName, $data) {
-        return (!empty($data[$fieldName])) ? $data[$fieldName] : null;
-    }
-
-}
-
 
 
 class FindController extends AbstractBaseController
@@ -347,6 +342,7 @@ class FileManager extends AbstractBaseController {
     {
         if(!$this->validate($filePath))
             return false;
+
         return array(
             'path'     => $filePath,
             'name'     => basename($filePath),
@@ -402,6 +398,24 @@ class FileManager extends AbstractBaseController {
         return true;
     }
 
+    public function getPathToSystem($pathType) {
+        $result = null;
+        switch($pathType){
+            case 'system' : $result = $this->getSystemDirPath(); break;
+            case 'server' : $result = $this->getServerDirPath(); break;
+        }
+        return $result;
+    }
+
+    public function selectScanDir($scanType) {
+        $result = [];
+        switch($scanType){
+            case 'system' : $result = $this->scanSystemDir(); break;
+            case 'server' : $result = $this->scanServerDir(); break;
+        }
+        return $result;
+    }
+
     public function fileReader($filePath = ''){
         if($filePath) $filePath = $this->path;
         header('Content-Description: File Transfer');
@@ -412,6 +426,134 @@ class FileManager extends AbstractBaseController {
         header('Pragma: public');
         header('Content-Length: ' . filesize($filePath));
         readfile($filePath);
+    }
+
+}
+
+
+class File
+{
+    protected string $fileName;
+    protected string $fileCreated;
+    protected string $fileModified;
+    protected string $fileSize;
+    public  string $fileType;
+
+    /**
+     * File constructor
+     *
+     * @param $fileName
+     */
+    public function __construct($fileName = null)
+    {
+        if($fileName)
+            $this->setFile($fileName);
+    }
+
+
+    public function setFile($fileName)
+    {
+        $this->fileName     = $fileName;
+        $this->fileCreated  = self::getNormalizedDate(filectime($fileName));
+        $this->fileModified = self::getNormalizedDate(filemtime($fileName));
+        $this->fileSize     = self::getConvertedFileSize(filesize($fileName));
+        $this->fileType     = filetype($fileName);
+
+        return $this;
+    }
+
+    /**
+     * Returns file name
+     *
+     * @return string
+     */
+    public function getFileName(): string
+    {
+        return $this->fileName;
+    }
+
+    /**
+     * Returns date when file was created
+     *
+     * @return string
+     */
+    public function getFileCreated(): string
+    {
+        return $this->fileCreated;
+    }
+
+    /**
+     * Returns date when file was modified
+     *
+     * @return string
+     */
+    public function getFileModified(): string
+    {
+        return $this->fileCreated;
+    }
+
+    /**
+     * Returns file size
+     *
+     * @return string
+     */
+    public function getFileSize(): string
+    {
+        return $this->fileSize;
+    }
+
+    /**
+     * Converts Unix timestamp into human readable date
+     *
+     * @param int $unixTimestamp
+     * @return string
+     */
+    private static function getNormalizedDate(int $unixTimestamp): string
+    {
+        return date ("d.m.Y", $unixTimestamp);
+    }
+
+    /**
+     * Converts bytes into human readable file size
+     *
+     * @param int $bytes
+     * @return string
+     */
+    private static function getConvertedFileSize(int $bytes): string
+    {
+        $result = "";
+        $bytes = floatval($bytes);
+        $arBytes = array(
+            0 => array(
+                "UNIT" => "TB",
+                "VALUE" => pow(1024, 4)
+            ),
+            1 => array(
+                "UNIT" => "GB",
+                "VALUE" => pow(1024, 3)
+            ),
+            2 => array(
+                "UNIT" => "MB",
+                "VALUE" => pow(1024, 2)
+            ),
+            3 => array(
+                "UNIT" => "KB",
+                "VALUE" => 1024
+            ),
+            4 => array(
+                "UNIT" => "B",
+                "VALUE" => 1
+            ),
+        );
+
+        foreach ($arBytes as $arItem) {
+            if ($bytes >= $arItem["VALUE"]) {
+                $result = $bytes / $arItem["VALUE"];
+                $result = str_replace(".", "," , strval(round($result, 2))) . " " . $arItem["UNIT"];
+                break;
+            }
+        }
+        return $result;
     }
 
 }
